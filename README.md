@@ -33,26 +33,30 @@ npm run preview
 
 ---
 
+## ขั้นตอนการ Deploy บน Render (แนะนำสำหรับ Static Site ฟรี 100%)
+
+โปรเจกต์นี้มีไฟล์ `render.yaml` เตรียมไว้แล้ว รองรับทั้งแบบ Blueprint อัตโนมัติ หรือตั้งค่าหน้าเว็บ Render Dashboard:
+
+### วิธีที่ 1: Deploy บน Render ผ่าน Dashboard
+1. เข้าสู่ระบบ [render.com](https://render.com) (เข้าด้วย GitHub ได้เลย)
+2. กดปุ่ม **"New +"** มุมขวาบน -> เลือก **"Static Site"**
+3. ค้นหาและเลือก Repository: `hornets21/pod-tarot-astrology`
+4. ตั้งค่าดังนี้:
+   - **Name:** `pod-tarot-astrology` (หรือชื่อที่ต้องการ)
+   - **Branch:** `main`
+   - **Build Command:** `npm install && npm run build`
+   - **Publish Directory:** `dist`
+5. ในส่วน **Advanced** -> **Redirects/Rewrites**:
+   - กด **Add Rule**
+   - **Type:** `Rewrite`
+   - **Source:** `/*`
+   - **Destination:** `/index.html`
+6. กด **"Create Static Site"** รอระบบ Build ประมาณ 1 นาที จะได้ URL เช่น `https://pod-tarot-astrology.onrender.com` ใช้งานได้ทันที
+
+---
+
 ## ขั้นตอนการ Deploy บน Vercel
 
-### วิธีที่ 1: Deploy ผ่าน GitHub (แนะนำที่สุด - อัปเดตอัตโนมัติ)
-1. นำโปรเจกต์นี้ Push ขึ้น GitHub Repository ของคุณ:
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit: Vite + Three.js tarot astrology"
-   git branch -M main
-   git remote add origin https://github.com/<YOUR_USERNAME>/<YOUR_REPO_NAME>.git
-   git push -u origin main
-   ```
-2. เข้าสู่ระบบ [vercel.com](https://vercel.com)
-3. กด **"Add New..."** -> **"Project"**
-4. เลือก Repository ที่เพิ่ง Push ขึ้นไป
-5. ในหน้าตั้งค่า Vercel จะตรวจพบว่าเป็น **Vite** โดยอัตโนมัติ:
-   - **Framework Preset:** `Vite`
-   - **Build Command:** `npm run build`
-   - **Output Directory:** `dist`
-6. กด **Deploy** รอประมาณ 30 วินาที เว็บไซต์จะพร้อมใช้งานทันที
 
 ---
 
