@@ -1,5 +1,4 @@
 import './style.css';
-import '@fortawesome/fontawesome-free/css/all.min.css';
 import { ESIIMSI_DATA } from './data/esiimsiData.js';
 import { TAROT_DECK } from './data/tarotData.js';
 import { toggleAudio, playRattleSound, playTempleGong } from './audio/soundManager.js';
@@ -7,6 +6,7 @@ import {
   initThreeScene,
   switchSceneMode,
   resetEsiimsiView,
+  resetTarotView,
   triggerEsiimsiShakeAnimation,
   triggerTarotShuffleAnimation,
   triggerTarotCardDrawAnimation,
@@ -92,6 +92,14 @@ function setupUIEvents() {
 
   const btnShuffleTarot = document.getElementById('btn-shuffle-tarot');
   if (btnShuffleTarot) btnShuffleTarot.addEventListener('click', shuffleTarotDeck);
+
+  const btnResetTarotView = document.getElementById('btn-reset-tarot-view');
+  if (btnResetTarotView) {
+    btnResetTarotView.addEventListener('click', () => {
+      resetTarotView();
+      showToast("ปรับตำแหน่งสำรับไพ่ตรงกลางเรียบร้อย");
+    });
+  }
 
   // Tarot Overlay buttons
   const btnCloseTarot = document.getElementById('btn-close-tarot');
@@ -195,6 +203,23 @@ function showEsiimsiOverlay(number) {
     </span>
   `).join('');
 
+  // Esiimsi Card Artwork Display
+  const cardWrapper = document.getElementById('esiimsi-card-wrapper');
+  const cardImg = document.getElementById('esiimsi-card-image');
+  const cardTitleEn = document.getElementById('esiimsi-card-title-en');
+
+  if (data.image && cardImg && cardWrapper) {
+    cardImg.src = data.image;
+    cardImg.alt = data.cardNameEn || data.title;
+    if (cardTitleEn) cardTitleEn.innerText = data.cardNameEn || '';
+    cardWrapper.classList.remove('hidden');
+    cardImg.onerror = () => {
+      cardWrapper.classList.add('hidden');
+    };
+  } else if (cardWrapper) {
+    cardWrapper.classList.add('hidden');
+  }
+
   // Open overlay & backdrop
   const overlay = document.getElementById('overlay-esiimsi');
   const backdrop = document.getElementById('overlay-backdrop');
@@ -292,16 +317,36 @@ function showTarotOverlay() {
         ${labels[idx]}
       </span>
 
-      <!-- Styled Card Mockup -->
-      <div class="w-32 h-52 rounded-xl bg-gradient-to-b from-[#22133e] to-[#10081e] border border-mystic-gold/60 p-2.5 flex flex-col justify-between items-center shadow-[0_0_15px_rgba(192,132,252,0.25)]">
-        <span class="text-[10px] font-cinzel text-mystic-gold">— ${card.id} —</span>
-        <div class="w-12 h-12 rounded-full bg-purple-900/40 flex items-center justify-center border border-purple-400/30 text-mystic-gold text-2xl">
-          <i class="fa-solid ${card.symbol}"></i>
+      <!-- Card Visual (Image with graceful fallback) -->
+      <div class="relative w-36 h-56 rounded-xl overflow-hidden border border-mystic-gold/60 shadow-[0_0_20px_rgba(192,132,252,0.3)] group transition-all duration-300 hover:scale-105 bg-[#10081e] flex flex-col items-center justify-center">
+        ${card.image ? `
+          <img 
+            src="${card.image}" 
+            alt="${card.nameEn}" 
+            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+            onerror="this.style.display='none'; const fb = this.parentElement.querySelector('.fallback-card'); if (fb) fb.classList.remove('hidden');" 
+          />
+        ` : ''}
+
+        <!-- Fallback Card Display -->
+        <div class="fallback-card ${card.image ? 'hidden ' : ''}absolute inset-0 bg-gradient-to-b from-[#22133e] to-[#10081e] p-2.5 flex flex-col justify-between items-center text-center">
+          <span class="text-[10px] font-cinzel text-mystic-gold">— ${card.id} —</span>
+          <div class="w-12 h-12 rounded-full bg-purple-900/40 flex items-center justify-center border border-purple-400/30 text-mystic-gold text-2xl">
+            <i class="fa-solid ${card.symbol}"></i>
+          </div>
+          <div>
+            <p class="font-bold text-xs text-slate-100 font-cinzel">${card.nameEn}</p>
+            <p class="text-[11px] text-purple-300 font-sarabun">${card.nameTh}</p>
+          </div>
         </div>
-        <div>
-          <p class="font-bold text-xs text-slate-100 font-cinzel">${card.nameEn}</p>
-          <p class="text-[11px] text-purple-300 font-sarabun">${card.nameTh}</p>
-        </div>
+
+        <!-- Ambient Filigree Border -->
+        <div class="pointer-events-none absolute inset-0 rounded-xl border border-mystic-gold/40 shadow-inner"></div>
+      </div>
+
+      <div class="text-center pt-0.5">
+        <p class="font-bold text-xs sm:text-sm text-slate-100 font-cinzel tracking-wide">${card.nameEn}</p>
+        <p class="text-[11px] text-amber-300/90 font-sarabun">${card.nameTh}</p>
       </div>
 
       <!-- Description -->

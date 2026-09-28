@@ -492,10 +492,12 @@ function setupInteractions(container) {
 
     if (isDragging) {
       if (currentSceneMode === 'esiimsi') {
-        if (esiimsiGroup) esiimsiGroup.rotation.y += deltaX * 0.008;
-        if (bambooCylinder) bambooCylinder.rotation.x = Math.max(-0.25, Math.min(0.25, bambooCylinder.rotation.x + deltaY * 0.004));
+        if (esiimsiGroup && !isShakingEsiimsi) esiimsiGroup.rotation.y += deltaX * 0.008;
+        if (bambooCylinder && !isShakingEsiimsi) bambooCylinder.rotation.x = Math.max(-0.25, Math.min(0.25, bambooCylinder.rotation.x + deltaY * 0.004));
       } else {
-        if (tarotDeckGroup) tarotDeckGroup.rotation.y += deltaX * 0.008;
+        if (tarotDeckGroup && !isDrawingTarot && activeDrawnCardSnapshots.length === 0) {
+          tarotDeckGroup.rotation.y += deltaX * 0.008;
+        }
       }
     } else if (currentSceneMode === 'tarot' && tarotDeckGroup && tarotDeckGroup.visible) {
       // Raycast hover check over 3D tarot cards
@@ -607,8 +609,17 @@ export function resetEsiimsiView() {
   if (esiimsiGroup) {
     esiimsiGroup.rotation.set(0, 0, 0);
     bambooCylinder.rotation.set(0, 0, 0);
-    camera.position.set(0, 4.2, 8.5);
-    camera.lookAt(0, 1.2, 0);
+  }
+  if (tarotDeckGroup) {
+    tarotDeckGroup.rotation.set(0, 0, 0);
+  }
+  camera.position.set(0, 4.2, 8.5);
+  camera.lookAt(0, 1.2, 0);
+}
+
+export function resetTarotView() {
+  if (tarotDeckGroup) {
+    tarotDeckGroup.rotation.set(0, 0, 0);
   }
 }
 
@@ -711,6 +722,7 @@ export function triggerTarotShuffleAnimation(onRattle, onComplete) {
 
     if (steps > 12) {
       clearInterval(shuffleAnim);
+      if (tarotDeckGroup) tarotDeckGroup.rotation.y = 0;
       tarotDeckGroup.children.forEach((c) => {
         if (c !== tarotAura) {
           c.position.x = 0;
@@ -844,30 +856,54 @@ export function triggerTarotCardDrawAnimation(drawnCards, onComplete) {
     rotZ: c.rotation.z
   }));
 
+  // Realign the deck smoothly towards the camera / front
+  let startDeckRotY = tarotDeckGroup.rotation.y % (Math.PI * 2);
+  if (startDeckRotY > Math.PI) startDeckRotY -= Math.PI * 2;
+  if (startDeckRotY < -Math.PI) startDeckRotY += Math.PI * 2;
+
   // Define target layouts based on card count (1 card or 3 cards)
+  // Perfectly angled and elevated towards the camera (0, 4.2, 8.5)
   let targets = [];
   if (count === 1) {
     targets = [
-      { x: 0, y: 1.6, z: 2.3, rotX: 0.25, rotY: 0, rotZ: Math.PI }
+      { x: 0, y: 1.68, z: 2.3, rotX: 0.38, rotY: 0, rotZ: Math.PI }
     ];
   } else {
     // 3 Cards spread across the altar: Left, Center, Right
     targets = [
-      { x: -1.85, y: 1.55, z: 2.1, rotX: 0.22, rotY: 0.12, rotZ: Math.PI - 0.1 },
-      { x: 0.0, y: 1.68, z: 2.3, rotX: 0.25, rotY: 0, rotZ: Math.PI },
-      { x: 1.85, y: 1.55, z: 2.1, rotX: 0.22, rotY: -0.12, rotZ: Math.PI + 0.1 }
+      { x: -1.85, y: 1.55, z: 2.1, rotX: 0.35, rotY: 0.15, rotZ: Math.PI - 0.08 },
+      { x: 0.0, y: 1.68, z: 2.3, rotX: 0.38, rotY: 0, rotZ: Math.PI },
+      { x: 1.85, y: 1.55, z: 2.1, rotX: 0.35, rotY: -0.15, rotZ: Math.PI + 0.08 }
     ];
   }
 
   // Assign front face textures
+  const textureLoader = new THREE.TextureLoader();
   activeCards.forEach((cardMesh, idx) => {
     if (drawnCards && drawnCards[idx]) {
-      const tex = generateTarotCardTexture(drawnCards[idx]);
-      cardMesh.material[3] = new THREE.MeshStandardMaterial({
+      const cardInfo = drawnCards[idx];
+      const tex = generateTarotCardTexture(cardInfo);
+      const mat = new THREE.MeshStandardMaterial({
         map: tex,
         roughness: 0.45,
         metalness: 0.3
       });
+      cardMesh.material[3] = mat;
+
+      if (cardInfo.image) {
+        textureLoader.load(
+          cardInfo.image,
+          (imgTex) => {
+            imgTex.colorSpace = THREE.SRGBColorSpace;
+            mat.map = imgTex;
+            mat.needsUpdate = true;
+          },
+          undefined,
+          () => {
+            // Keep procedural canvas texture if image not yet found
+          }
+        );
+      }
     }
   });
 
@@ -875,6 +911,11 @@ export function triggerTarotCardDrawAnimation(drawnCards, onComplete) {
   const drawInterval = setInterval(() => {
     progress += 0.04;
     const ease = Math.sin(progress * Math.PI * 0.5);
+
+    // Smoothly re-orient deck toward the user's camera
+    if (tarotDeckGroup) {
+      tarotDeckGroup.rotation.y = startDeckRotY * (1 - ease);
+    }
 
     activeCards.forEach((c, idx) => {
       const orig = activeDrawnCardSnapshots[idx];
@@ -890,6 +931,7 @@ export function triggerTarotCardDrawAnimation(drawnCards, onComplete) {
 
     if (progress >= 1.0) {
       clearInterval(drawInterval);
+      if (tarotDeckGroup) tarotDeckGroup.rotation.y = 0;
       setTimeout(() => {
         isDrawingTarot = false;
         if (onComplete) onComplete();
